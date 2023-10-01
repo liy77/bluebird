@@ -1,4 +1,5 @@
 # Bluebird
+JavaScript-like promises for Java
 
 ## Usage
 ```java
