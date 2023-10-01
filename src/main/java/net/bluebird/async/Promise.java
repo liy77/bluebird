@@ -2,6 +2,7 @@ package net.bluebird.async;
 
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -9,10 +10,7 @@ import java.util.List;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.lang.Exception;
-import java.lang.Thread;
 import java.util.function.Function;
-import javax.annotation.Nonnull;
 
 /**
  * Represents the eventual completion (or failure) of an asynchronous operation and its resulting value.
