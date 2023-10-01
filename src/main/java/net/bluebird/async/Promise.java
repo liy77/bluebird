@@ -17,26 +17,35 @@ import java.util.function.Function;
  * @param <T> The value to be returned in promise
  */
 public class Promise<T> {
-    private volatile Exception rejected = null;
-    private volatile T received;
+    private volatile Exception rejected = null; // Declaration of a volatile field for storing a rejected Exception
+    private volatile T received; // Declaration of a volatile field for storing received value
+    /**
+     * A volatile boolean field indicating if the promise is rejected
+     */
     public volatile boolean isRejected = false;
+    /**
+     * A volatile boolean field indicating if the promise is resolved
+     */
     public volatile boolean isResolved = false;
-    private volatile boolean isCaught = false;
-    private final Object lock = new Object();
-    private final CountDownLatch latch = new CountDownLatch(1);
-    private volatile Callable<T> caught;
-    private volatile Runnable onFinal = null;
-    private volatile  boolean onFinalCalled = false;
-    private final List<Consumer<T>> thenablesCallbacks = new ArrayList<>();
+    /**
+     * A volatile boolean field indicating if an exception is caught
+     */
+    public volatile boolean isCaught = false;
+    private final Object lock = new Object(); // Creating a synchronization lock object
+    private final CountDownLatch latch = new CountDownLatch(1); // Creating a CountDownLatch with an initial count of 1
+    private volatile Callable<T> caught; // Declaration of a volatile field for a Callable that catches exceptions
+    private volatile Runnable onFinal = null; // Declaration of a volatile field for a Runnable to be executed on finalization
+    private volatile  boolean onFinalCalled = false; // Declaration of a volatile boolean field to track if onFinal has been called
+    private final List<Consumer<T>> thenablesCallbacks = new ArrayList<>(); // Creating a list to store Consumer callbacks
 
-    public Promise() {}
+    public Promise() {} // Default Constructor
 
     public Promise(@Nonnull Function<Consumer<Exception>, T> callback) {
-        this.resolve(callback.apply(this::reject));
+        this.resolve(callback.apply(this::reject)); // Resolving the promise with a callback function
     }
 
     public Promise(@Nonnull BiConsumer<Consumer<T>, Consumer<Exception>> callback) {
-        callback.accept(this::resolve, this::reject);
+        callback.accept(this::resolve, this::reject); // Accepting a callback for resolving or rejecting the promise
     }
 
     /**
@@ -47,6 +56,11 @@ public class Promise<T> {
         this.receive(value);
     }
 
+    private void notifyAndCountDown() {
+        lock.notifyAll(); // Notifies waiting threads
+        latch.countDown();
+    }
+
     private void receive(T t) {
         try {
             Thread thread = new Thread(() -> {
@@ -54,19 +68,17 @@ public class Promise<T> {
                     synchronized (lock) {
                         received = t;
                         isResolved = true;
-                        lock.notifyAll();
-                        latch.countDown();
+                        notifyAndCountDown();
                     }
                 } catch (Exception e) {
                     synchronized (lock) {
-                        _reject(e);
-                        lock.notifyAll();
-                        latch.countDown();
+                        _reject(e); // Error received, rejecting current promise
+                        notifyAndCountDown();
                     }
                 }
             });
 
-            thread.start();
+            thread.start(); // Starts a new thread to handle promise resolution
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -80,8 +92,7 @@ public class Promise<T> {
         synchronized (lock) {
             if (!isResolved && !isRejected) {
                 _reject(e);
-                lock.notifyAll();
-                latch.countDown();
+                notifyAndCountDown();
             }
         }
     }
@@ -96,8 +107,7 @@ public class Promise<T> {
 
     private void _reject(Exception e) {
         rejected = e;
-        isRejected = true;
-        isRejected = true;
+        isRejected = true; // Indicates that current promise was rejected
     }
 
     /**
@@ -110,16 +120,17 @@ public class Promise<T> {
 
         Iterator<Consumer<T>> _thenablesCallbacks = thenablesCallbacks.iterator();
 
+        // Check if there are thenables callbacks and if so, execute them
         if (_thenablesCallbacks.hasNext()) {
             try {
-                Consumer<T> current = _thenablesCallbacks.next();
-                thenablesCallbacks.remove(current);
-                current.accept(r.call());
+                Consumer<T> current = _thenablesCallbacks.next(); // Get the current thenable callback value from the list
+                thenablesCallbacks.remove(current); // Removing the unnecessary callback from the list
+                current.accept(r.call()); // Executes the Callable and passes the result to the Consumer
             } catch (Exception e) {
-                // Ignore
+                // Ignore this
             }
 
-            if (!onFinalCalled) {
+            if (onFinal != null && !onFinalCalled) {
                 onFinal.run();
             }
         }
@@ -136,29 +147,30 @@ public class Promise<T> {
 
         Consumer<T> callback2 = (value) -> {
             callback.accept(value);
-            executorService.shutdown();
+            executorService.shutdown(); // Shutdown the service to avoid improper code running
         };
 
         thenablesCallbacks.add(callback2);
 
         executorService.submit(() -> {
             Runnable shutdown = () -> {
-                if (onFinal != null) {
+                if (onFinal != null && !onFinalCalled) {
                     onFinal.run();
                     onFinalCalled = true;
                 }
 
-                thenablesCallbacks.remove(callback2);
-                executorService.shutdown();
+                thenablesCallbacks.remove(callback2); // Removing the unnecessary callback from the list
+                executorService.shutdown(); // Shutdown the service to avoid improper code running
             };
 
             Runnable closeAndAccept = () -> {
                 callback.accept(received);
                 shutdown.run();
             };
+
             Runnable closeAndCatch = () -> {
                 try {
-                    callback.accept(caught.call());
+                    callback.accept(caught.call()); // Promise rejected, running caught function
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -256,7 +268,7 @@ public class Promise<T> {
      */
     @SafeVarargs
     public static <T> PromiseArray<T> all(T... values) {
-        ArrayList<Promise<T>> promises = new ArrayList<>();
+        ArrayList<Promise<T>> promises = new ArrayList<>(); // Creating an array list to store resolved promises
 
         for (T value : values) {
             promises.add(Promise.resolver(value));
@@ -264,7 +276,7 @@ public class Promise<T> {
 
         Promise<T>[] arr = promises.toArray(new Promise[0]);
 
-        return all(arr);
+        return all(arr); // Values transformed into promises, running original function
     }
 
     /**
@@ -333,7 +345,7 @@ public class Promise<T> {
                 reject.accept(e);
             }
 
-            executorService.shutdown();
+            executorService.shutdown(); // Shutdown the service to avoid improper code running
         });
     }
 }
