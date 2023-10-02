@@ -3,10 +3,8 @@ package net.bluebird.async;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import javax.annotation.Nullable;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -114,6 +112,7 @@ public class Promise<T> {
      * If the current promise is rejected, the value passed in catch will be returned.
      * @param r Function that will be executed in catch with the value to be returned
      */
+    @NotNull
     public Promise<T> catchException(@Nonnull Callable<T> r) {
         isCaught = true;
         caught = r;
@@ -142,6 +141,7 @@ public class Promise<T> {
      * Executes a function when the current promise ends
      * @param callback Function that will be executed at the end of the promise
      */
+    @NotNull
     public Promise<T> then(@Nonnull Consumer<T> callback) {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -215,8 +215,9 @@ public class Promise<T> {
      * @param callback Function that will be executed at the end of the promise
      * @param caught Function that will be executed at the promise is rejected
      */
-    public Promise<T> then(@Nonnull Consumer<T> callback, @Nonnull Callable<T> caught) {
-        catchException(caught);
+    @NotNull
+    public Promise<T> then(@Nonnull Consumer<T> callback, Callable<T> caught) {
+        if (!Objects.isNull(caught)) catchException(caught);
         return then(callback);
     }
 
@@ -224,6 +225,7 @@ public class Promise<T> {
      * Executes a function at the end of the current promise regardless of whether it was resolved or rejected
      * @param fn Function that will be executed at the end of the promise
      */
+    @NotNull
     public Promise<T> onFinally(@Nonnull Runnable fn) {
         onFinal = fn;
         return this;
@@ -232,6 +234,7 @@ public class Promise<T> {
     /**
      * Wait the result of this promise and return it
      */
+    @Nullable
     public T await() throws Exception {
         if (isRejected) {
             if (!isCaught) {
@@ -274,6 +277,7 @@ public class Promise<T> {
             promises.add(Promise.resolver(value));
         }
 
+        @SuppressWarnings("unchecked")
         Promise<T>[] arr = promises.toArray(new Promise[0]);
 
         return all(arr); // Values transformed into promises, running original function
@@ -284,7 +288,8 @@ public class Promise<T> {
      * @param value The value to resolve promise
      * @param <T> The value to be returned in promise
      */
-    public static <T> Promise<T> resolver(T value) {
+    @NotNull
+    public static <T> Promise<T> resolver(@Nullable T value) {
         Promise<T> promise = new Promise<>();
         promise.resolve(value);
         return promise;
@@ -295,10 +300,15 @@ public class Promise<T> {
      * @param value The promise value to resolve promise
      * @param <T> The value to be returned in promise
      */
+    @NotNull
     public static <T> Promise<T> resolver(Promise<T> value) {
         Promise<T> promise = new Promise<>();
         try {
-            promise.resolve(value.await());
+            if (Objects.isNull(value)) {
+                promise.resolve(null);
+            } else {
+                promise.resolve(value.await());
+            }
         } catch (Exception e) {
             promise.reject(e);
         }
@@ -311,7 +321,8 @@ public class Promise<T> {
      * @param e The exception value to reject promise
      * @param <T> The value to be returned in promise
      */
-    public static <T> @NotNull Promise<T> rejected(@Nonnull Exception e) {
+    @NotNull
+    public static <T> Promise<T> rejected(Exception e) {
         Promise<T> promise = new Promise<>();
         promise.reject(e);
         return promise;
@@ -322,7 +333,8 @@ public class Promise<T> {
      * @param e The exception message to reject promise
      * @param <T> The value to be returned in promise
      */
-    public static <T> @NotNull Promise<T> rejected(@Nonnull String e) {
+    @NotNull
+    public static <T> Promise<T> rejected(String e) {
         Promise<T> promise = new Promise<>();
         promise.reject(e);
         return promise;
@@ -334,6 +346,7 @@ public class Promise<T> {
      * @param <T> The value to be returned in promise
      */
     @SafeVarargs
+    @NotNull
     public static <T> Promise<T> race(Promise<T>... promises) {
         ExecutorService executorService = Executors.newFixedThreadPool(promises.length);
 
