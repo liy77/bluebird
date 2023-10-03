@@ -1,13 +1,6 @@
-import de.marcphilipp.gradle.nexus.NexusPublishExtension
-import io.codearte.gradle.nexus.NexusStagingExtension
-import java.time.Duration
-
 plugins {
     id("java")
     id("maven-publish")
-    id("signing")
-    id("io.codearte.nexus-staging") version "0.30.0"
-    id("de.marcphilipp.nexus-publish") version "0.4.0"
 }
 
 group = "net.bluebird"
@@ -48,22 +41,16 @@ fun generatePom(pom: MavenPom) {
     }
 }
 
-val javadoc: Javadoc by tasks;
-
 val sourcesJar = task<Jar>("sourcesJar") {
     archiveClassifier.set("sources")
     from("src/main/java")
 }
-
-val javadocJar = task<Jar>("javadocJar") {
-    archiveClassifier.set("javadoc")
-    from(javadoc.destinationDir)
-}
+println(layout.buildDirectory.dir("repos/releases").get().toString())
 
 publishing {
     publications {
-        register("Release", MavenPublication::class) {
-            groupId = "net.bluebird"
+        create<MavenPublication>("Release") {
+            groupId = "io.github.justawaifuhunter"
             artifactId = "async"
             version = "1.0"
 
@@ -71,32 +58,17 @@ publishing {
             artifact(sourcesJar)
             generatePom(pom);
         }
+
+        repositories {
+            maven {
+                url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+                credentials {
+                    username = getProjectProperty("ossrhUser")
+                    password = getProjectProperty("ossrhPassword")
+                }
+            }
+        }
     }
 }
 
 fun getProjectProperty(name: String) = project.properties[name] as? String
-
-val canSign = getProjectProperty("signing.keyId") != null;
-if (canSign) {
-    signing {
-        sign(publishing.publications.getByName("Release"))
-    }
-}
-
-configure<NexusStagingExtension> {
-    username = getProjectProperty("ossrhUser") ?: ""
-    password = getProjectProperty("ossrhPassword") ?: ""
-}
-
-configure<NexusPublishExtension> {
-    nexusPublishing {
-        repositories.sonatype {
-            username.set(getProjectProperty("ossrhUser") ?: "")
-            password.set(getProjectProperty("ossrhPassword") ?: "")
-        }
-
-        connectTimeout.set(Duration.ofMinutes(1))
-        clientTimeout.set(Duration.ofMinutes(10))
-    }
-}
-
