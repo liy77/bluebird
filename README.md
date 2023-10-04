@@ -4,7 +4,7 @@ JavaScript-like promises for Java
 ## Usage Example
 ```java
 import java.lang.Thread;
-import async.io.github.justawaifuhunter.bluebird.Promise;
+import io.github.justawaifuhunter.bluebird.Promise;
 
 class Main() {
     public static void main(String[] args) {
