@@ -1,10 +1,10 @@
 # Bluebird
 JavaScript-like promises for Java
 
-## Usage
+## Usage Example
 ```java
 import java.lang.Thread;
-import net.bluebird.async.Promise;
+import async.io.github.justawaifuhunter.bluebird.Promise;
 
 class Main() {
     public static void main(String[] args) {
@@ -24,4 +24,25 @@ class Main() {
         });
     }
 }
+```
+
+## Download
+### Gradle
+```gradle
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.github.justawaifuhunter:bluebird:1.0.0")
+}
+```
+
+### Maven
+```xml
+<dependency>
+    <groupId>io.github.justawaifuhunter</groupId>
+    <artifactId>bluebird</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
