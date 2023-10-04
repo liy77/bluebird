@@ -1,13 +1,21 @@
+import java.time.Duration
+
 plugins {
     id("java")
     id("maven-publish")
+    id("io.github.gradle-nexus.publish-plugin") version "1.0.0"
+    id("org.jetbrains.dokka") version "1.4.20"
+    signing
 }
 
-group = "net.bluebird"
-version = "1.0"
+group = "io.github.justawaifuhunter.bluebird"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.jetbrains.space/public/p/kotlinx-html/maven")
+    }
 }
 
 dependencies {
@@ -45,22 +53,30 @@ val sourcesJar = task<Jar>("sourcesJar") {
     archiveClassifier.set("sources")
     from("src/main/java")
 }
-println(layout.buildDirectory.dir("repos/releases").get().toString())
+
+val javadocJar = task<Jar>("javadocJar") {
+    group = JavaBasePlugin.DOCUMENTATION_GROUP
+    description = "Generate javadoc"
+    archiveClassifier.set("javadoc")
+    from(tasks.named("dokkaHtml"))
+}
 
 publishing {
     publications {
-        create<MavenPublication>("Release") {
+        register("Release", MavenPublication::class) {
             groupId = "io.github.justawaifuhunter"
-            artifactId = "async"
-            version = "1.0"
+            artifactId = "bluebird"
+            version = project.version.toString()
 
             from(components["java"])
             artifact(sourcesJar)
+            artifact(javadocJar)
             generatePom(pom);
         }
 
         repositories {
             maven {
+                name = "OSSRH"
                 url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
                 credentials {
                     username = getProjectProperty("ossrhUser")
@@ -68,6 +84,22 @@ publishing {
                 }
             }
         }
+    }
+}
+
+signing {
+    val extension = extensions.getByName("publishing") as PublishingExtension
+    sign(extension.publications.getByName("Release"))
+}
+
+nexusPublishing {
+    repositories.sonatype {
+        packageGroup = "io.github.justawaifuhunter"
+        nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+        snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+
+        username.set(getProjectProperty("ossrhUser"))
+        password.set(getProjectProperty("ossrhPassword"))
     }
 }
 

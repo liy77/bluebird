@@ -1,4 +1,5 @@
-import net.bluebird.async.*;
+import io.github.justawaifuhunter.bluebird.async.Promise;
+import io.github.justawaifuhunter.bluebird.async.PromiseArray;
 
 public class Test {
     public static void main(String[] args) throws Exception {

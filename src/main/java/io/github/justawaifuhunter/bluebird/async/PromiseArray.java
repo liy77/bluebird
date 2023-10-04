@@ -1,4 +1,4 @@
-package net.bluebird.async;
+package io.github.justawaifuhunter.bluebird.async;
 
 import java.util.ArrayList;
 
